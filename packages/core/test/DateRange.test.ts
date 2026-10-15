@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { TestClock } from "effect/testing"
-import { resolveDateRange } from "../src/index.ts"
+import { comparisonRange, resolveDateRange } from "../src/index.ts"
 
 const today = Date.UTC(2026, 9, 15, 12)
 
@@ -39,4 +39,20 @@ describe("resolveDateRange", () => {
       const malformed = yield* resolveDateRange({ startDate: "01/02/2026" }).pipe(Effect.flip)
       assert.strictEqual(malformed._tag, "InvalidInput")
     }))
+})
+
+describe("comparisonRange", () => {
+  it("returns the same number of days right before", () => {
+    assert.deepStrictEqual(comparisonRange({ startDate: "2026-09-15", endDate: "2026-10-12" }, "previous"), {
+      startDate: "2026-08-18",
+      endDate: "2026-09-14"
+    })
+  })
+
+  it("returns the same dates a year earlier", () => {
+    assert.deepStrictEqual(comparisonRange({ startDate: "2026-02-01", endDate: "2026-02-28" }, "yearOverYear"), {
+      startDate: "2025-02-01",
+      endDate: "2025-02-28"
+    })
+  })
 })

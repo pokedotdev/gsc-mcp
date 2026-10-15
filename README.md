@@ -16,8 +16,17 @@ apps/local      Local adapter: stdio transport, file-based account store, CLI
 |---|---|
 | `list_accounts` | Connected Google accounts |
 | `list_sites` | Every property reachable through the accounts, with permission levels |
-| `search_analytics` | Clicks, impressions, CTR and position grouped by query, page, country, device, date… |
+| `compare_periods` | Totals and biggest winners/losers vs. the previous period or year over year |
+| `find_opportunities` | Striking-distance and low-CTR query/page pairs, ranked by potential extra clicks |
+| `detect_cannibalization` | Queries where several pages of the site compete |
+| `page_report` | One URL: totals vs. previous period, devices and queries |
+| `search_analytics` | Raw performance data grouped by any dimensions, for custom analysis |
 | `inspect_url` | Index status, canonicals, last crawl and rich results of a URL |
+
+The analysis tools aggregate server-side and return compact tables, so agents get answers instead of thousands of
+rows. Branded queries (inferred from the domain, extendable with `brandTerms`) and sitelinks are excluded from
+opportunity and cannibalization analysis. Identical Search Console queries are cached for 15 minutes and shared
+across tools.
 
 `site` accepts a domain (`example.com`), a URL or an exact property (`sc-domain:example.com`); the server picks the
 matching property and the account with the highest permission on it.

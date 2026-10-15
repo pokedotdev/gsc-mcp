@@ -60,3 +60,26 @@ export const resolveDateRange = Effect.fnUntraced(function*(options: {
     endDate: formatDate(lastFinal)
   }
 })
+
+export const ComparisonMode = Schema.Literals(["previous", "yearOverYear"])
+export type ComparisonMode = typeof ComparisonMode.Type
+
+const parseDate = (date: string) => DateTime.makeUnsafe(`${date}T00:00:00Z`)
+
+/** The period to compare a range against: the one right before it, or the same dates a year earlier. */
+export const comparisonRange = (range: DateRange, mode: ComparisonMode): DateRange => {
+  const start = parseDate(range.startDate)
+  const end = parseDate(range.endDate)
+  if (mode === "yearOverYear") {
+    return {
+      startDate: formatDate(DateTime.subtract(start, { years: 1 })),
+      endDate: formatDate(DateTime.subtract(end, { years: 1 }))
+    }
+  }
+  const days = Math.round((DateTime.toEpochMillis(end) - DateTime.toEpochMillis(start)) / 86_400_000) + 1
+  const previousEnd = DateTime.subtract(start, { days: 1 })
+  return {
+    startDate: formatDate(DateTime.subtract(previousEnd, { days: days - 1 })),
+    endDate: formatDate(previousEnd)
+  }
+}
