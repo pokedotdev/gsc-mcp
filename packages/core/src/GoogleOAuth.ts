@@ -152,7 +152,9 @@ export class GoogleOAuth extends Context.Service<GoogleOAuth, {
         if (!scopes.includes("https://www.googleapis.com/auth/webmasters.readonly")) {
           return yield* new AuthError({
             account: "new account",
-            message: "The Search Console permission was not granted. Run the flow again and allow access."
+            message: "The Search Console permission was not granted. Run the flow again and, on the Google consent " +
+              "screen, tick the checkbox to view your Search Console data. " +
+              `Granted scopes: ${scopes.join(", ") || "none"}.`
           })
         }
         return {
