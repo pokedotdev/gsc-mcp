@@ -1,0 +1,17 @@
+{
+  "name": "gsc-mcp",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.26.0",
+  "scripts": {
+    "check": "tsc -b",
+    "gsc-mcp": "node apps/local/src/main.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

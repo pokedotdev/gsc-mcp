@@ -1,0 +1,17 @@
+{
+  "name": "@gsc-mcp/local",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gsc-mcp": "./src/main.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@gsc-mcp/core": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
