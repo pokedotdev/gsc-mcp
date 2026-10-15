@@ -19,7 +19,8 @@ const layer = GscToolkitHandlers.pipe(
             { keys: ["seo audit"], clicks: 5, impressions: 90, ctr: 0.05555, position: 3.06 }
           ]
         })
-      }
+      },
+      inspectUrl: () => Effect.succeed({ indexStatusResult: { verdict: "PASS" } })
     }
   )),
   Layer.provideMerge(AccountStore.layerMemory([makeAccount("personal")]))
@@ -64,5 +65,16 @@ describe("GscToolkit", () => {
     Effect.gen(function*() {
       const result = yield* call("search_analytics", { site: "unknown.com" }).pipe(Effect.flip)
       assert.strictEqual((result as { _tag: string })._tag, "SiteNotFound")
+    }).pipe(Effect.provide(layer)))
+
+  it.effect("inspect_url omits fields Google did not return", () =>
+    Effect.gen(function*() {
+      const result = yield* call("inspect_url", { url: "https://example.com/page" })
+      assert.deepStrictEqual(result?.encodedResult, {
+        site: "sc-domain:example.com",
+        account: "personal",
+        url: "https://example.com/page",
+        verdict: "PASS"
+      })
     }).pipe(Effect.provide(layer)))
 })

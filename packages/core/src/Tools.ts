@@ -121,6 +121,11 @@ export const InspectUrl = readOnly(Tool.make("inspect_url", {
 
 export const GscToolkit = Toolkit.make(ListAccounts, ListSites, SearchAnalytics, InspectUrl)
 
+// MCP structured content must be plain JSON, so absent fields are dropped
+// instead of being sent as `undefined`.
+const compact = <A extends Record<string, unknown>>(value: A): A =>
+  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as A
+
 const round = (value: number, digits: number) => {
   const factor = 10 ** digits
   return Math.round(value * factor) / factor
@@ -191,7 +196,7 @@ export const GscToolkitHandlers = GscToolkit.toLayer(Effect.gen(function*() {
       const richResultTypes = result.richResultsResult?.detectedItems?.flatMap((item) =>
         item.richResultType ? [item.richResultType] : []
       )
-      return {
+      return compact({
         site: resolved.siteUrl,
         account: resolved.account,
         url,
@@ -210,7 +215,7 @@ export const GscToolkitHandlers = GscToolkit.toLayer(Effect.gen(function*() {
         richResults: result.richResultsResult?.verdict,
         richResultTypes,
         inspectionLink: result.inspectionResultLink
-      }
+      })
     })
   })
 }))
