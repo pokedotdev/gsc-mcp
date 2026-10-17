@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-10-15_
+_Last updated: 2026-10-17_
 
 gsc-mcp is an open source tool that lets AI agents read Google Search Console data on behalf of the person who runs it.
 
@@ -24,7 +24,10 @@ agent. It is not used for advertising, profiling, or any other purpose.
 - **Local version:** OAuth refresh tokens and account emails are stored only on your computer, in
   `~/.config/gsc-mcp/accounts.json`, readable only by your user. No data is sent to the authors of gsc-mcp or to any
   third party other than Google.
-- Search Console data is not persisted; it may be cached in memory for a few minutes while the server runs.
+- Search Console data fetched by the tools is cached on your computer to avoid repeating requests to Google: in
+  memory for 15 minutes and in `~/.cache/gsc-mcp/`, readable only by your user, for up to 7 days. Files that an
+  agent asks to export are written to the same directory and deleted after 7 days. Run `gsc-mcp cache clear` to
+  delete them at any time, or set `GSC_MCP_DISK_CACHE=off` to keep data only in memory.
 
 ## Sharing
 
