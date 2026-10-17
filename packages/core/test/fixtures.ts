@@ -1,5 +1,5 @@
 import { Effect, Layer, Redacted } from "effect"
-import { Account, GoogleOAuth, GscClient, type GscClientError, type SiteEntry } from "../src/index.ts"
+import { Account, Exporter, GoogleOAuth, GscClient, type GscClientError, type SiteEntry } from "../src/index.ts"
 
 export const makeAccount = (alias: string) =>
   new Account({
@@ -41,5 +41,16 @@ export const fakeGsc = (
     },
     searchAnalytics: () => Effect.succeed({ rows: [] }),
     inspectUrl: () => Effect.succeed({}),
+    listSitemaps: () => Effect.succeed([]),
     ...overrides
+  }))
+
+/** Exporter that keeps files in a map. */
+export const memoryExporter = (files: Map<string, string>) =>
+  Layer.succeed(Exporter)(Exporter.of({
+    write: ({ name, content }) =>
+      Effect.sync(() => {
+        files.set(name, content)
+        return { path: `/exports/${name}`, bytes: content.length }
+      })
   }))

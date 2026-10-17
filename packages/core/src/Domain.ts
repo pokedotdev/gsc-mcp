@@ -125,3 +125,26 @@ export type InspectionResult = typeof InspectionResult.Type
 export const UrlInspectionResponse = Schema.Struct({
   inspectionResult: InspectionResult
 })
+
+// Sitemaps -------------------------------------------------------------------
+
+export const Sitemap = Schema.Struct({
+  path: Schema.String,
+  lastSubmitted: Schema.optional(Schema.String),
+  lastDownloaded: Schema.optional(Schema.String),
+  isPending: Schema.optional(Schema.Boolean),
+  isSitemapsIndex: Schema.optional(Schema.Boolean),
+  type: Schema.optional(Schema.String),
+  // The API encodes these int64 counters as strings.
+  warnings: Schema.optional(Schema.Union([Schema.String, Schema.Number])),
+  errors: Schema.optional(Schema.Union([Schema.String, Schema.Number])),
+  contents: Schema.optional(Schema.Array(Schema.Struct({
+    type: Schema.optional(Schema.String),
+    submitted: Schema.optional(Schema.Union([Schema.String, Schema.Number]))
+  })))
+})
+export type Sitemap = typeof Sitemap.Type
+
+export const SitemapsResponse = Schema.Struct({
+  sitemap: Schema.optional(Schema.Array(Sitemap))
+})

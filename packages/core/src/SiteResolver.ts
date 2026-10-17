@@ -22,12 +22,20 @@ const PERMISSION_RANK: Record<PermissionLevel, number> = {
   siteUnverifiedUser: 0
 }
 
+export interface ResolveOptions {
+  /**
+   * For URLs of pages rather than properties: try the domain property first,
+   * so every tool reports the same property and the numbers are comparable.
+   */
+  readonly preferDomain?: boolean | undefined
+}
+
 /**
  * Turns user input ("example.com", "https://example.com/blog",
  * "sc-domain:example.com") into the Search Console properties that may match,
- * most specific first.
+ * most specific first (domain property first with `preferDomain`).
  */
-export const siteCandidates = (input: string): ReadonlyArray<string> => {
+export const siteCandidates = (input: string, options: ResolveOptions = {}): ReadonlyArray<string> => {
   const trimmed = input.trim()
   if (trimmed.toLowerCase().startsWith("sc-domain:")) {
     return [`sc-domain:${trimmed.slice("sc-domain:".length).toLowerCase()}`]
@@ -42,7 +50,8 @@ export const siteCandidates = (input: string): ReadonlyArray<string> => {
       const prefix = segments.slice(0, i).join("/")
       prefixes.push(`${url.protocol}//${url.host}/${prefix ? `${prefix}/` : ""}`)
     }
-    return [...prefixes, `sc-domain:${url.hostname.replace(/^www\./, "")}`]
+    const domain = `sc-domain:${url.hostname.replace(/^www\./, "")}`
+    return options.preferDomain ? [domain, ...prefixes] : [...prefixes, domain]
   }
   const host = trimmed.replace(/\/+$/, "").toLowerCase()
   const bare = host.replace(/^www\./, "")
@@ -59,12 +68,13 @@ export const siteCandidates = (input: string): ReadonlyArray<string> => {
 export const resolveSite = (
   index: ReadonlyArray<SiteAccess>,
   input: string,
-  account?: string
+  account?: string,
+  options: ResolveOptions = {}
 ): ResolvedSite | undefined => {
   const usable = index.filter((s) =>
     s.permissionLevel !== "siteUnverifiedUser" && (account === undefined || s.account === account)
   )
-  for (const candidate of siteCandidates(input)) {
+  for (const candidate of siteCandidates(input, options)) {
     const best = usable
       .filter((s) => s.siteUrl === candidate)
       .sort((a, b) =>
@@ -79,7 +89,11 @@ export const resolveSite = (
 export class SiteResolver extends Context.Service<SiteResolver, {
   readonly index: Effect.Effect<SiteIndex, AccountStoreError>
   readonly refresh: Effect.Effect<void>
-  resolve(input: string, account?: string): Effect.Effect<ResolvedSite, SiteNotFound | AccountNotFound | AccountStoreError>
+  resolve(
+    input: string,
+    account?: string,
+    options?: ResolveOptions
+  ): Effect.Effect<ResolvedSite, SiteNotFound | AccountNotFound | AccountStoreError>
 }>()("gsc-mcp/SiteResolver") {
   static readonly layer = Layer.effect(
     SiteResolver,
@@ -106,15 +120,19 @@ export class SiteResolver extends Context.Service<SiteResolver, {
 
       const [index, invalidate] = yield* Effect.cachedInvalidateWithTTL(buildIndex, "10 minutes")
 
-      const resolve = Effect.fn("SiteResolver.resolve")(function*(input: string, account?: string) {
+      const resolve = Effect.fn("SiteResolver.resolve")(function*(
+        input: string,
+        account?: string,
+        options: ResolveOptions = {}
+      ) {
         if (account !== undefined) yield* store.get(account)
         let current = yield* index
-        let resolved = resolveSite(current.sites, input, account)
+        let resolved = resolveSite(current.sites, input, account, options)
         if (resolved === undefined) {
           // The site may have been added recently: rebuild once before failing.
           yield* invalidate
           current = yield* index
-          resolved = resolveSite(current.sites, input, account)
+          resolved = resolveSite(current.sites, input, account, options)
         }
         if (resolved !== undefined) return resolved
         const available = [...new Set(current.sites.map((s) => s.siteUrl))]

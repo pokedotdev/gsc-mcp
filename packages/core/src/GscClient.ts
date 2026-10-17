@@ -5,6 +5,8 @@ import {
   type SearchAnalyticsRequest,
   SearchAnalyticsResponse,
   SiteEntry,
+  type Sitemap,
+  SitemapsResponse,
   UrlInspectionResponse
 } from "./Domain.ts"
 import { type AccountNotFound, type AccountStoreError, AuthError, GscApiError, QuotaExceeded } from "./Errors.ts"
@@ -32,6 +34,7 @@ export class GscClient extends Context.Service<GscClient, {
     request: SearchAnalyticsRequest
   ): Effect.Effect<SearchAnalyticsResponse, GscClientError>
   inspectUrl(account: string, siteUrl: string, url: string): Effect.Effect<InspectionResult, GscClientError>
+  listSitemaps(account: string, siteUrl: string): Effect.Effect<ReadonlyArray<Sitemap>, GscClientError>
 }>()("gsc-mcp/GscClient") {
   static readonly layer = Layer.effect(
     GscClient,
@@ -130,7 +133,17 @@ export class GscClient extends Context.Service<GscClient, {
         return body.inspectionResult
       })
 
-      return GscClient.of({ listSites, searchAnalytics, inspectUrl })
+      const listSitemaps = Effect.fn("GscClient.listSitemaps")(function*(account: string, siteUrl: string) {
+        yield* Effect.annotateCurrentSpan({ account, siteUrl })
+        const body = yield* send(
+          account,
+          HttpClientRequest.get(`${WEBMASTERS_URL}/sites/${encodeURIComponent(siteUrl)}/sitemaps`),
+          SitemapsResponse
+        )
+        return body.sitemap ?? []
+      })
+
+      return GscClient.of({ listSites, searchAnalytics, inspectUrl, listSitemaps })
     })
   )
 }

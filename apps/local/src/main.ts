@@ -7,27 +7,38 @@ import {
   GoogleOAuth,
   GscLive,
   GscMcpTools,
+  OutputBudget,
   SERVER_INSTRUCTIONS,
   SiteResolver
 } from "@gsc-mcp/core"
-import { Console, DateTime, Effect, FileSystem, Layer, Logger, Option, Schema } from "effect"
+import { Config, Console, DateTime, Effect, FileSystem, Layer, Logger, Option, Schema } from "effect"
 import { McpProtocol, McpServer } from "effect/ai"
 import { Argument, Command, Flag } from "effect/cli"
 import { FetchHttpClient } from "effect/http"
 import { FileAccountStore } from "./FileAccountStore.ts"
+import { clearCache, FileExporter, FileResultCache, pruneCache } from "./FileCache.ts"
 import { runLoopbackFlow } from "./LoopbackFlow.ts"
 import { OAuthClientLocal } from "./OAuthClient.ts"
-import { ConfigDir } from "./Paths.ts"
+import { CacheDir, ConfigDir } from "./Paths.ts"
 
-const VERSION = "0.1.0"
+const VERSION = "0.2.0"
 
 const PlatformLive = Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)
 const ConfigDirLive = ConfigDir.layer.pipe(Layer.provide(PlatformLive))
+const CacheDirLive = CacheDir.layer.pipe(Layer.provide(PlatformLive))
 const StoreLive = FileAccountStore.pipe(Layer.provide([ConfigDirLive, PlatformLive]))
 const OAuthClientLive = OAuthClientLocal.pipe(Layer.provide([ConfigDirLive, PlatformLive]))
+const ResultCacheLive = FileResultCache.pipe(Layer.provide([CacheDirLive, PlatformLive]))
+const ExporterLive = FileExporter.pipe(Layer.provide([CacheDirLive, PlatformLive]))
 const AppLive = GscLive.pipe(
   Layer.provideMerge(StoreLive),
-  Layer.provide([OAuthClientLive, PlatformLive])
+  Layer.provide([OAuthClientLive, ResultCacheLive, PlatformLive])
+)
+
+/** Characters of table rows per response, from GSC_MCP_MAX_OUTPUT_CHARS. */
+const OutputBudgetLive = Layer.effect(
+  OutputBudget,
+  Config.Int("GSC_MCP_MAX_OUTPUT_CHARS").pipe(Config.withDefault(OutputBudget.defaultValue()))
 )
 
 // serve ----------------------------------------------------------------------
@@ -43,8 +54,10 @@ const serve = Command.make(
         instructions: SERVER_INSTRUCTIONS,
         protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18, McpProtocol.v2025_03_26]
       })),
-      Layer.provide([AppLive, PlatformLive]),
+      Layer.provide([AppLive, ExporterLive, OutputBudgetLive, PlatformLive]),
       Layer.launch,
+      // Expired cache entries and old exports are cleaned up on every start.
+      (launch) => pruneCache.pipe(Effect.provide([CacheDirLive, PlatformLive]), Effect.andThen(launch)),
       // stdout carries the MCP protocol, so logs must go to stderr.
       Effect.provideService(Logger.LogToStderr, true)
     )
@@ -150,6 +163,22 @@ const authClient = Command.make(
   }, Effect.provide([ConfigDirLive, PlatformLive]))
 ).pipe(Command.withDescription("Save the Google Cloud OAuth client credentials"))
 
+// cache ----------------------------------------------------------------------
+
+const cacheClear = Command.make(
+  "clear",
+  {},
+  Effect.fn(function*() {
+    const dir = yield* clearCache
+    yield* Console.log(`Removed cached results and exported files in ${dir}.`)
+  }, Effect.provide([CacheDirLive, PlatformLive]))
+).pipe(Command.withDescription("Delete cached Search Console results and exported files"))
+
+const cache = Command.make("cache").pipe(
+  Command.withDescription("Manage the local cache"),
+  Command.withSubcommands([cacheClear])
+)
+
 const auth = Command.make("auth").pipe(
   Command.withDescription("Manage Google accounts"),
   Command.withSubcommands([authAdd, authList, authRemove, authClient])
@@ -157,7 +186,7 @@ const auth = Command.make("auth").pipe(
 
 const cli = Command.make("gsc-mcp").pipe(
   Command.withDescription("Read-only Google Search Console MCP server"),
-  Command.withSubcommands([serve, auth]),
+  Command.withSubcommands([serve, auth, cache]),
   Command.run({ version: VERSION })
 )
 

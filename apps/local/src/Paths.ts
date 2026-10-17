@@ -24,3 +24,27 @@ export class ConfigDir extends Context.Service<ConfigDir, {
     })
   )
 }
+
+/** Location of cached Search Console results and exported files (XDG aware). */
+export class CacheDir extends Context.Service<CacheDir, {
+  readonly dir: string
+  readonly resultsDir: string
+  readonly exportsDir: string
+}>()("gsc-mcp/local/CacheDir") {
+  static readonly layer = Layer.effect(
+    CacheDir,
+    Effect.gen(function*() {
+      const path = yield* Path.Path
+      const override = yield* Config.option(Config.String("GSC_MCP_CACHE_DIR"))
+      const xdg = yield* Config.option(Config.String("XDG_CACHE_HOME"))
+      const dir = override._tag === "Some"
+        ? override.value
+        : path.join(xdg._tag === "Some" ? xdg.value : path.join(homedir(), ".cache"), "gsc-mcp")
+      return CacheDir.of({
+        dir,
+        resultsDir: path.join(dir, "results"),
+        exportsDir: path.join(dir, "exports")
+      })
+    })
+  )
+}

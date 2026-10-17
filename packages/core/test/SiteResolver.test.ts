@@ -26,6 +26,14 @@ describe("siteCandidates", () => {
       "sc-domain:example.com"
     ])
   })
+
+  it("tries the domain property first for page URLs with preferDomain", () => {
+    assert.deepStrictEqual(siteCandidates("https://www.example.com/blog/", { preferDomain: true }), [
+      "sc-domain:example.com",
+      "https://www.example.com/blog/",
+      "https://www.example.com/"
+    ])
+  })
 })
 
 describe("resolveSite", () => {

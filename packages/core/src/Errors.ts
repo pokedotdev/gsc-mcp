@@ -37,6 +37,10 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()("InvalidInp
   message: Schema.String
 }) {}
 
+export class ExportError extends Schema.TaggedError<ExportError>()("ExportError", {
+  message: Schema.String
+}) {}
+
 export const GscError = Schema.Union([
   AccountNotFound,
   AuthError,
@@ -44,6 +48,7 @@ export const GscError = Schema.Union([
   SiteNotFound,
   QuotaExceeded,
   GscApiError,
-  InvalidInput
+  InvalidInput,
+  ExportError
 ])
 export type GscError = typeof GscError.Type
